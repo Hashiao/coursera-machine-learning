@@ -1,0 +1,95 @@
+function [J, grad] = cofiCostFunc(params, Y, R, num_users, num_movies, ...
+                                  num_features, lambda)
+%COFICOSTFUNC Collaborative filtering cost function
+%   [J, grad] = COFICOSTFUNC(params, Y, R, num_users, num_movies, ...
+%   num_features, lambda) returns the cost and gradient for the
+%   collaborative filtering problem.
+%
+
+% Unfold the U and W matrices from params
+X = reshape(params(1:num_movies*num_features), num_movies, num_features);
+%(1000, 11) (1000movies, 11features)
+%(5, 3)   (5movies, 3features)
+Theta = reshape(params(num_movies*num_features+1:end), ...
+                num_users, num_features);
+Y_pre = zeros(num_movies, num_users);
+%(4, 3)   (4users, 3features)
+
+            
+% You need to return the following values correctly
+J = 0;
+X_grad = zeros(size(X));  %(n_movies, n)
+Theta_grad = zeros(size(Theta));  %(n_users, n)
+
+% ====================== YOUR CODE HERE ======================
+% Instructions: Compute the cost function and gradient for collaborative
+%               filtering. Concretely, you should first implement the cost
+%               function (without regularization) and make sure it is
+%               matches our costs. After that, you should implement the 
+%               gradient and use the checkCostFunction routine to check
+%               that the gradient is correct. Finally, you should implement
+%               regularization.
+%
+% Notes: X - num_movies  x num_features matrix of movie features
+%        Theta - num_users  x num_features matrix of user features
+%        Y - num_movies x num_users matrix of user ratings of movies
+%        R - num_movies x num_users matrix, where R(i, j) = 1 if the 
+%            i-th movie was rated by the j-th user
+%
+% You should set the following variables correctly:
+%
+%        X_grad - num_movies x num_features matrix, containing the 
+%                 partial derivatives w.r.t. to each element of X
+%        Theta_grad - num_users x num_features matrix, containing the 
+%                     partial derivatives w.r.t. to each element of Theta
+%
+
+%% Cost
+for i = 1:num_movies
+    for j = 1:num_users
+        Y_pre(i,j) = X(i,:) * (Theta(j,:)');
+    end
+end
+Y_err = (Y_pre - Y);
+J = 0.5*sum(sum(R.*(Y_err.^2)));
+Reg_theta = 0.5*lambda*sum(sum(Theta.^2));
+Reg_X = 0.5*lambda*sum(sum(X.^2));
+J = J + Reg_theta + Reg_X; 
+
+%% X_grad  (5, 3)
+for i = 1:num_movies
+    idx = find(R(i,:)==1);
+    Theta_temp = Theta(idx,:);
+    Y_temp = Y(i,idx);
+    X_grad(i,:) = (X(i,:)*Theta_temp' - Y_temp)*Theta_temp;
+end
+
+%% theta_grad
+% not vectorized
+%{
+for j = 1:num_users 
+    for k = 1:num_features
+        Theta_grad(j,k) = sum(R(:,j).*(Y_err(:,j)).*X(:,k)); 
+    end
+end
+%}
+%vectorized
+for j = 1:num_users 
+    Theta_grad(j,:) = sum(R(:,j).*(Y_err(:,j)).*X); 
+end
+
+%% Regularized gradient
+for i = 1:num_movies
+    X_grad(i,:) = X_grad(i,:) + lambda*X(i,:);
+end
+
+for j = 1:num_users
+    Theta_grad(j,:) = Theta_grad(j,:) + lambda*Theta(j,:);
+end
+
+
+% =============================================================
+
+grad = [X_grad(:); Theta_grad(:)];
+
+end
